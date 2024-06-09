@@ -4,7 +4,7 @@ pygame.init()
 from math import *
 surface = pygame.display.set_mode((600, 900))
 
-
+sunk = False
 x = True
 game = Game()
 
@@ -25,15 +25,15 @@ while x == True:
             game.player.Vy = game.player.jumpSpeed
 
     if keys[pygame.K_LEFT] and game.player.x > 0:
-        if not game.grassCollide():
+        if not game.sideGrassCollide():
             game.player.moveLeft()
-        while game.grassCollide():
+        while game.sideGrassCollide():
              game.player.moveRight()
 
     if keys[pygame.K_RIGHT] and game.player.x < 570:
-       if not game.grassCollide():
+       if not game.sideGrassCollide():
             game.player.moveRight()
-       while game.grassCollide():
+       while game.sideGrassCollide():
             game.player.moveLeft()
     
     if game.gameCollide("bounce"):
@@ -51,9 +51,14 @@ while x == True:
     game.player.y += game.player.Vy
 
     if game.gameCollide("grass"):
+
         game.player.gravity = 0
         game.player.Vy = 0
+        if sunk:
+            game.unSinkPlayer()
+            sunk = False
     else:
+         sunk = True
          game.player.gravity = 2
 
     game.bedCollide()

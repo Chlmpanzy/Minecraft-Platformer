@@ -85,9 +85,9 @@ class Player():
         return False
     
     def grassCollide(self, platform: list[Platform]):
-        playerRect = pygame.Rect(self.x, self.y, 25, 20)
+        playerRect = pygame.Rect(self.x, self.y, 25, 40)
         for block in platform:
-                blockRect = pygame.Rect(block.x, block.y, 25, 40)
+                blockRect = pygame.Rect(block.x, block.y, self.image.get_width()+25, self.image.get_height())
                 if playerRect.colliderect(blockRect):
                     return True
         return False
@@ -164,6 +164,11 @@ class Game():
                 for block in platform:
                     block.draw(surface) 
 
+    def unSinkPlayer(self):
+        while self.player.collide(self.levels[self.level].platforms["grass"]):
+            self.player.y -= 1
+        self.player.y += 1 #player needs to be barely touchign grass so he can jump
+
     def gameCollide(self, type):
         return self.player.collide(self.levels[self.level].platforms[type])
     
@@ -171,7 +176,7 @@ class Game():
         if self.bed.collide(self.player):
             self.nextLevel()
 
-    def grassCollide(self):
+    def sideGrassCollide(self):
         return self.player.grassCollide(self.levels[self.level].platforms["grass"])
     
     def nextLevel(self):
