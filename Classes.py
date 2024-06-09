@@ -17,37 +17,42 @@ class Block():
 
 
 class Platform():
-    def __init__(self, type, length, x, y):
+    def __init__(self, type, x, y, length, height):
         self.blocks: list[Block] = []
         self.type = type
         self.x = x
         self.y = y
-        offset = 0
+        lengthOffset = 0
+        heightOffest = 0
         self.length = length
+        self.height = height
         for x in range(self.length):
-            self.blocks.append(Block(self.type, self.x + offset,self.y))
-            offset += 25
+            for i in range(self.height):
+                self.blocks.append(Block(self.type, self.x + lengthOffset,self.y + heightOffest))
+                heightOffest += 25
+            heightOffest = 0
+            lengthOffset += 25
 
     def draw(self, surface):
         for block in self.blocks:
             block.draw(surface)
     
 class Bounce(Platform):
-    def __init__(self, length, x, y):
-        Platform.__init__(self, "bounce", length, x, y)
+    def __init__(self, x, y, length = 1, height = 1):
+        Platform.__init__(self, "bounce", x, y, length, height)
 
 
 class Grass(Platform):
-    def __init__(self, length, x, y):
-        Platform.__init__(self, "grass", length, x, y)
+    def __init__(self, x, y, length = 1, height = 1):
+        Platform.__init__(self, "grass", x, y, length, height)
 
 class Dive(Platform):
-    def __init__(self, length, x, y):
-        Platform.__init__(self, "dive", length, x, y)
+    def __init__(self, x, y, length = 1, height = 1):
+        Platform.__init__(self, "dive", x, y, length, height)
 
 class Water(Platform):
-    def __init__(self, length, x, y):
-        Platform.__init__(self, "water", length, x, y)
+    def __init__(self, x, y, length = 1, height = 1):
+        Platform.__init__(self, "water", x, y, length, height)
 
     
 
@@ -105,7 +110,7 @@ class Level():
         self.water = water
         self.bounce = bounce
         self.platforms: dict[str:list[Platform]] = {"grass":self.grass, "bounce":self.bounce, "dive": self.dive, "water":self.water}
-        self.platformsDraw = [self.grass, self.bounce, self.dive, self.bounce, self.water]
+        self.platformsDraw: list[list[Platform]] = [self.grass, self.bounce, self.dive, self.bounce, self.water]
         
 
 class Bed():
@@ -133,21 +138,22 @@ class Game():
     def __init__(self):
         self.surface = pygame.display.set_mode((600, 900))
         self.clock = pygame.time.Clock()
+        self.deaths = 0
         self.level = 1
         level1 = Level(
             1, 
             (30, 450),
             (500, 200),
-            grass = [Grass(2, 30, 500), Grass(2, 130, 450), Grass(2, 230, 400), Grass(2, 400, 350)],
-            water = [Water(int(600/25), 0, 800)]
+            grass = [Grass(30, 500, 2), Grass(130, 450, 2), Grass(230, 400, 2), Grass(400, 350, 2)],
+            water = [Water(0, 800, int(600/25))]
             )
         level2 = Level(
             2,
             (30, 450),
             (500, 200),
-            grass = [Grass(2,30,500)],
-            bounce= [Bounce(2, 300, 500), Bounce(2, 500, 400)],
-            water = [Water(int(600/25), 0, 800)]
+            grass = [Grass(30,500, 2), Grass(400, 600, 2)],
+            bounce= [Bounce(200, 500, 2), Bounce(500, 450, 2)],
+            water = [Water(0, 800,int(600/25)), Water(400, 325,1, 3)]#, Water(1, 400, 325), Water(1, 400, 375)]
         )
         self.levels: list[Level] = [None, level1, level2]
         self.player = Player(self.levels[self.level].playerSpawn[0], self.levels[self.level].playerSpawn[1])
@@ -155,6 +161,7 @@ class Game():
 
     def reset(self):
         self.player.x, self.player.y = self.levels[self.level].playerSpawn
+        self.deaths += 1
 
     def drawAll(self, surface):
         self.player.draw(surface)
