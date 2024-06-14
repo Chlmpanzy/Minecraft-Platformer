@@ -50,9 +50,9 @@ class Dive(Platform):
     def __init__(self, x, y, length = 1, height = 1):
         Platform.__init__(self, "dive", x, y, length, height)
 
-class Water(Platform):
+class Lava(Platform):
     def __init__(self, x, y, length = 1, height = 1):
-        Platform.__init__(self, "water", x, y, length, height)
+        Platform.__init__(self, "lava", x, y, length, height)
 
     
 
@@ -60,23 +60,36 @@ class Water(Platform):
 
 class Player():
     def __init__(self, x: int, y: int):
+        self.facing = 'right'
         self.Vy = 0
         self.jumpSpeed = -20
         self.gravity = 2
         self.x = x
         self.y = y
-        self.image = pygame.image.load("steve.png")
-        self.image = pygame.transform.scale(self.image,(25,50))
+        self.frame = 0
+        self.frames = []
+
+        for x in range(10):
+            self.frames.append(pygame.transform.scale(pygame.image.load("mario"+str(x)+".png"), (25,50)))
+
+        self.nextRightPic = [4, 4, 4, 4, 5, 6, 7, 5, 4, 4]
+        self.nextLeftPic = [1, 2, 3, 1, 1, 1, 1, 1, 1, 1]
+
+        self.jumped = False
         
 
     def draw(self, surface):
-        surface.blit(self.image,(self.x,self.y))
+        surface.blit(self.frames[self.frame],(self.x,self.y))
     
-    def moveRight(self):
+    def moveRight(self, change = True):
         self.x += 10
+        if change:
+            self.facing = 'right'
 
-    def moveLeft(self):
+    def moveLeft(self, change = True):
         self.x -= 10
+        if change:
+            self.facing = 'left'
 
     def collide(self, platforms: list[list[Platform]]):
         playerRect = pygame.Rect(self.x, self.y, 25, 50)
@@ -91,8 +104,10 @@ class Player():
     
     def grassCollide(self, platform: list[Platform]):
         playerRect = pygame.Rect(self.x, self.y, 25, 40)
+        if platform == None:
+            return False
         for block in platform:
-                blockRect = pygame.Rect(block.x, block.y, self.image.get_width()+25, self.image.get_height())
+                blockRect = pygame.Rect(block.x, block.y, 50, 25)
                 if playerRect.colliderect(blockRect):
                     return True
         return False
@@ -101,16 +116,17 @@ class Player():
     
 
 class Level():
-    def __init__(self, levelNumber: int, playerCoord: tuple[int], bedCoord, grass: list[Grass] = None , bounce: list[Bounce] = None, dive: list[Dive] = None, water: list[Water] = None):
+    def __init__(self, levelNumber: int, playerCoord: tuple[int], bedCoord, grass: list[Grass] = None , bounce: list[Bounce] = None, dive: list[Dive] = None, lava: list[Lava] = None, playLava = False):
         self.bedSpawn = bedCoord
         self.playerSpawn = playerCoord
         self.level = levelNumber
         self.grass = grass
         self.dive = dive
-        self.water = water
+        self.lava = lava
         self.bounce = bounce
-        self.platforms: dict[str:list[Platform]] = {"grass":self.grass, "bounce":self.bounce, "dive": self.dive, "water":self.water}
-        self.platformsDraw: list[list[Platform]] = [self.grass, self.bounce, self.dive, self.bounce, self.water]
+        self.playLava = playLava
+        self.platforms: dict[str:list[Platform]] = {"grass":self.grass, "bounce":self.bounce, "dive": self.dive, "lava":self.lava}
+        self.platformsDraw: list[list[Platform]] = [self.grass, self.bounce, self.dive, self.bounce, self.lava]
         
 
 class Bed():
@@ -136,40 +152,95 @@ class Bed():
 
 class Game():
     def __init__(self):
-        self.surface = pygame.display.set_mode((600, 900))
+        self.start = False
+        self.width = 600
+        self.height = 900
+        self.WHITE = (255,255,255)
+
+        self.walkCount = 500
+        
+        self.surface = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
+
+        pygame.mixer.music.load("Intro.wav")
+        pygame.mixer.music.set_volume(0.08)
+        pygame.mixer.music.play(-1)
+
+        self.burned = pygame.mixer.Sound("burned.wav")
+        self.burned.set_volume(0.2)
+        self.lava = pygame.mixer.Sound("lava.wav")
+        self.lava.set_volume(0.5)
+        self.jumpSound = pygame.mixer.Sound("bounce.wav")
+        self.jumpSound.set_volume(0.2)
+        self.landSound = pygame.mixer.Sound("land.wav")
+        self.landSound.set_volume(0.2)
+        self.walkingSound = pygame.mixer.Sound("walking.wav")
+        self.walkingSound.set_volume(0.2)
+
+        self.introImage = pygame.image.load("introBg.png")
+        self.introBg = pygame.transform.scale(self.introImage,(self.width,self.height))
+        self.fonts = {"Big":pygame.font.SysFont("Ariel Black",40),
+                "Small":pygame.font.SysFont("Ariel Black",24),
+                "Medium":pygame.font.SysFont("Ariel Black",30),
+                "Title":pygame.font.SysFont("impact",50)
+                     }
+
         self.deaths = 0
         self.level = 1
-        level1 = Level(
-            1, 
-            (30, 450),
-            (500, 200),
-            grass = [Grass(30, 500, 2), Grass(130, 450, 2), Grass(230, 400, 2), Grass(400, 350, 2)],
-            water = [Water(0, 800, int(600/25))]
+        self.levels: list[Level] = [
+            None, #so that we can index using the self.level
+            Level(
+                1, 
+                (30, 450),
+                (500, 200),
+                grass = [Grass(30, 500, 2), Grass(130, 450, 2), Grass(230, 400, 2), Grass(400, 350, 2)],
+                lava = [Lava(0, 800, int(600/25))]
+                ),
+            Level(
+                2,
+                (30, 450),
+                (500, 200),
+                grass = [Grass(30,500, 2), Grass(400, 600, 2)],
+                bounce= [Bounce(200, 500, 2), Bounce(500, 450, 2)],
+                lava = [Lava(0, 800,int(600/25)), Lava(400, 325,1, 3)]
+            ),
+            Level(
+                3,
+                (30, 100),
+                (500, 100),
+                grass=[Grass(30, 150, 2), Grass(130, 600), Grass(350, 700)],
+                bounce = [Bounce(230, 700, 2), Bounce(500,600,2), Bounce(420, 450, 2), Bounce(500, 300, 2)],
+                dive = [Dive(325,550,2)],
+                lava = [Lava(0, 800,int(600/25)), Lava(250, 100, 5, 18), Lava(500, 425,2), Lava(420, 275,2)],
+                playLava = True
             )
-        level2 = Level(
-            2,
-            (30, 450),
-            (500, 200),
-            grass = [Grass(30,500, 2), Grass(400, 600, 2)],
-            bounce= [Bounce(200, 500, 2), Bounce(500, 450, 2)],
-            water = [Water(0, 800,int(600/25)), Water(400, 325,1, 3)]#, Water(1, 400, 325), Water(1, 400, 375)]
-        )
-        self.levels: list[Level] = [None, level1, level2]
+            ]
+        
         self.player = Player(self.levels[self.level].playerSpawn[0], self.levels[self.level].playerSpawn[1])
         self.bed = Bed(self.levels[self.level].bedSpawn[0], self.levels[self.level].bedSpawn[1])
 
     def reset(self):
         self.player.x, self.player.y = self.levels[self.level].playerSpawn
         self.deaths += 1
+        self.player.jumped = False
+        
+    def introScreen(self):
+        text = self.fonts["Title"].render("Press SPACE to Continue",1,self.WHITE)
+        self.surface.blit(self.introBg, (0,0))
+        self.surface.blit(text, (45, 700))
 
-    def drawAll(self, surface):
-        self.player.draw(surface)
-        self.bed.draw(surface)
-        for platform in self.levels[self.level].platformsDraw:
-            if platform != None:
-                for block in platform:
-                    block.draw(surface) 
+        pass
+    def drawAll(self):
+        self.surface.fill((0,0,0))
+        if not self.start:
+            self.introScreen()
+        else:
+            self.player.draw(self.surface)
+            self.bed.draw(self.surface)
+            for platform in self.levels[self.level].platformsDraw:
+                if platform != None:
+                    for block in platform:
+                        block.draw(self.surface) 
 
     def unSinkPlayer(self):
         while self.player.collide(self.levels[self.level].platforms["grass"]):
@@ -190,5 +261,8 @@ class Game():
         self.level += 1
         self.player.x, self.player.y = self.levels[self.level].playerSpawn
         self.bed.x, self.bed.y = self.levels[self.level].bedSpawn
+        if self.levels[self.level].playLava:
+            self.lava.play()
+        
 
 
