@@ -153,14 +153,19 @@ class Bed():
 class Game():
     def __init__(self):
         self.start = False
-        self.width = 600
-        self.height = 900
+        self.WIDTH = 600
+        self.HEIGHT = 900
         self.WHITE = (255,255,255)
-
+        self.RED = (255, 0, 0)
+        self.over = False
+        self.won = False
         self.walkCount = 500
         
-        self.surface = pygame.display.set_mode((self.width, self.height))
+        self.surface = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
+
+        self.livesImage = pygame.image.load("lives.png")
+        self.livesImage = pygame.transform.scale(self.livesImage,(25,50))
 
         pygame.mixer.music.load("Intro.wav")
         pygame.mixer.music.set_volume(0.08)
@@ -178,15 +183,16 @@ class Game():
         self.walkingSound.set_volume(0.2)
 
         self.introImage = pygame.image.load("introBg.png")
-        self.introBg = pygame.transform.scale(self.introImage,(self.width,self.height))
+        self.introBg = pygame.transform.scale(self.introImage,(self.WIDTH,self.HEIGHT))
         self.fonts = {"Big":pygame.font.SysFont("Ariel Black",40),
                 "Small":pygame.font.SysFont("Ariel Black",24),
                 "Medium":pygame.font.SysFont("Ariel Black",30),
                 "Title":pygame.font.SysFont("impact",50)
                      }
 
-        self.deaths = 0
+        self.lives = 5
         self.level = 1
+        
         self.levels: list[Level] = [
             None, #so that we can index using the self.level
             Level(
@@ -214,27 +220,63 @@ class Game():
                 lava = [Lava(0, 800,int(600/25)), Lava(250, 100, 5, 18), Lava(500, 425,2), Lava(420, 275,2)],
                 playLava = True
             )
-            ]
+        ]
         
         self.player = Player(self.levels[self.level].playerSpawn[0], self.levels[self.level].playerSpawn[1])
         self.bed = Bed(self.levels[self.level].bedSpawn[0], self.levels[self.level].bedSpawn[1])
 
     def reset(self):
         self.player.x, self.player.y = self.levels[self.level].playerSpawn
-        self.deaths += 1
+        self.lives -= 1
         self.player.jumped = False
+        if self.lives == 0:
+            self.gameOver()
+
+    def playAgain(self):
+        self.level = 0
+        self.nextLevel()
+        self.lives = 5
+        self.won = False
+        self.over = False
+        
         
     def introScreen(self):
         text = self.fonts["Title"].render("Press SPACE to Continue",1,self.WHITE)
         self.surface.blit(self.introBg, (0,0))
         self.surface.blit(text, (45, 700))
 
+    def gameOver(self):
+        self.over = True
+        self.surface.fill((0,0,0))
+        if self.won:
+            text = self.fonts["Title"].render("YOU WON!!", 1, self.RED)
+        else:
+            text = self.fonts["Title"].render("YOU LOST!", 1, self.RED)
+        text1 = self.fonts["Title"].render("Press SPACE to Play Again",1,self.WHITE)
+        text2 = self.fonts["Medium"].render("Press ESC to leave", 1, self.WHITE)
+        self.surface.blit(text, (self.WIDTH//2-100, self.HEIGHT//2-125))
+        self.drawLives(self.HEIGHT//2-75 )
+        self.surface.blit(text1, (self.WIDTH//2-250, self.HEIGHT//2))
+        self.surface.blit(text2, (self.WIDTH//2-85, self.HEIGHT//2+75))
+        pygame.display.update()
+        
+
+
         pass
+
+    def drawLives(self, y):
+        offset = 0
+        for i in range(self.lives):
+            self.surface.blit(self.livesImage, (self.WIDTH//2-(self.lives*32//2) + offset, y))
+            offset += 35
+        offset = 0
+
     def drawAll(self):
         self.surface.fill((0,0,0))
         if not self.start:
             self.introScreen()
         else:
+            self.drawLives(5)
             self.player.draw(self.surface)
             self.bed.draw(self.surface)
             for platform in self.levels[self.level].platformsDraw:
@@ -247,6 +289,8 @@ class Game():
             self.player.y -= 1
         self.player.y += 1 #player needs to be barely touchign grass so he can jump
 
+    
+
     def gameCollide(self, type):
         return self.player.collide(self.levels[self.level].platforms[type])
     
@@ -258,11 +302,15 @@ class Game():
         return self.player.grassCollide(self.levels[self.level].platforms["grass"])
     
     def nextLevel(self):
-        self.level += 1
-        self.player.x, self.player.y = self.levels[self.level].playerSpawn
-        self.bed.x, self.bed.y = self.levels[self.level].bedSpawn
-        if self.levels[self.level].playLava:
-            self.lava.play()
+        if self.level != len(self.levels)-1:
+            self.level += 1
+            self.player.x, self.player.y = self.levels[self.level].playerSpawn
+            self.bed.x, self.bed.y = self.levels[self.level].bedSpawn
+            if self.levels[self.level].playLava:
+                self.lava.play()
+        else:
+            self.won = True
+            self.gameOver()
         
 
 

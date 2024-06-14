@@ -7,19 +7,25 @@ x = True
 game = Game()
 
 def redraw():
-    game.surface.fill((0,0,0))
-    game.drawAll()
-    pygame.display.update()
+    if not game.over:
+        game.surface.fill((0,0,0))
+        game.drawAll()
+        pygame.display.update()
 
 while x == True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             x = False
-        if not game.start and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
+        if event.type == pygame.KEYDOWN:
+            if not game.start and event.key == pygame.K_SPACE:
                 game.start = True
+            if game.over:
+                if event.key == pygame.K_SPACE:
+                    game.playAgain()
+                if event.key == pygame.K_ESCAPE:
+                    x = False
                     
-    if game.start:
+    if game.start and not game.over:
         keys = pygame.key.get_pressed()
         
         if (keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]) and game.gameCollide("grass"):
