@@ -4,11 +4,11 @@ pygame.init()
 from math import *
 sunk = False
 x = True
+down = False
 game = Game()
 
 def redraw():
     if not game.over:
-        game.surface.fill((0,0,0))
         game.drawAll()
         pygame.display.update()
 
@@ -28,9 +28,9 @@ while x == True:
     if game.start and not game.over:
         keys = pygame.key.get_pressed()
         
-        if (keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]) and game.gameCollide("grass"):
-                
+        if (keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]) and game.gameCollide("grass") and not down:
                 game.player.Vy = game.player.jumpSpeed
+                game.player.jumped = True
 
         elif (keys[pygame.K_a] or keys[pygame.K_LEFT]) and game.player.x > 0:
             if not game.sideGrassCollide():
@@ -76,13 +76,21 @@ while x == True:
             game.burned.play()
             game.reset()
             
-            
+        
         game.player.Vy += game.player.gravity
         game.player.y += game.player.Vy
 
+        if game.headGrassCollide():
+            if game.player.Vy>5:
+                game.player.Vy = 0
+            game.sinkPlayer()
+
+                
+
         if game.gameCollide("grass"):
-            if game.player.jumped:
+            if game.player.inAir:
                 game.landSound.play()
+                game.player.inAir = False
                 game.player.jumped = False
             game.player.gravity = 0
             game.player.Vy = 0
@@ -90,7 +98,7 @@ while x == True:
                 game.unSinkPlayer()
                 sunk = False
         else:
-            game.player.jumped = True
+            game.player.inAir = True
             if game.player.facing == 'right':
                     game.player.frame = 9
             else:
