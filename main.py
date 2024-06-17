@@ -8,6 +8,10 @@ down = False
 game = Game()
 
 def redraw():
+    '''
+    Draws game
+    () -> None
+    '''
     if not game.over:
         game.drawAll()
         pygame.display.update()
@@ -18,7 +22,7 @@ while x == True:
             x = False
         if event.type == pygame.KEYDOWN:
             if not game.start and event.key == pygame.K_SPACE:
-                game.start = True
+                game.starting()
             if game.over:
                 if event.key == pygame.K_SPACE:
                     game.playAgain()
@@ -30,16 +34,14 @@ while x == True:
         
         if (keys[pygame.K_w] or keys[pygame.K_SPACE] or keys[pygame.K_UP]) and game.gameCollide("grass") and not down:
                 game.player.Vy = game.player.jumpSpeed
-                game.player.jumped = True
 
         elif (keys[pygame.K_a] or keys[pygame.K_LEFT]) and game.player.x > 0:
             if not game.sideGrassCollide():
-                game.player.moveLeft()
+                game.player.moveLeft()  
                 if game.gameCollide("grass"):
                     if game.walkCount >= 500:
                         game.walkingSound.play()
                         game.walkCount = 0
-                if game.gameCollide("grass"):
                     game.player.frame = game.player.nextLeftPic[game.player.frame]
             while game.sideGrassCollide():
                 game.player.moveRight(False)
@@ -52,7 +54,6 @@ while x == True:
                     if game.walkCount >= 500:
                         game.walkingSound.play()
                         game.walkCount = 0
-                if game.gameCollide("grass"):
                     game.player.frame = game.player.nextRightPic[game.player.frame]
             while game.sideGrassCollide():
                 game.player.moveLeft(False)
@@ -63,13 +64,19 @@ while x == True:
             else:
                 game.player.frame = 0
         
-        if game.gameCollide("bounce"):
+        if game.gameCollide("bounce") and not game.bouncePlayed:
             game.player.Vy = -30
             game.jumpSound.play()
+            game.bouncePlayed = True
+        else:
+            game.bouncePlayed = False
             
-        if game.gameCollide("dive"):
+        if game.gameCollide("dive") and not game.divePlayed:
             game.player.Vy = 30
             game.jumpSound.play()
+            game.divePlayed = True
+        else:
+            game.divePlayed = False
 
         if game.gameCollide("lava"):
             game.player.Vy = 0
@@ -80,9 +87,12 @@ while x == True:
         game.player.Vy += game.player.gravity
         game.player.y += game.player.Vy
 
-        if game.headGrassCollide():
-            if game.player.Vy>5:
-                game.player.Vy = 0
+        if game.player.Vy > 45:
+            game.player.Vy = 45 #This is the fastest a player can fall before game starts glitching (Phase through platforms)
+        
+
+        if game.headGrassCollide() and game.player.Vy < 0:  #this way it only stops your motion if you arent already falling
+            game.player.Vy = 0
             game.sinkPlayer()
 
                 
@@ -91,7 +101,6 @@ while x == True:
             if game.player.inAir:
                 game.landSound.play()
                 game.player.inAir = False
-                game.player.jumped = False
             game.player.gravity = 0
             game.player.Vy = 0
             if sunk:
