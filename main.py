@@ -21,8 +21,11 @@ while x == True:
         if event.type == pygame.QUIT:
             x = False
         if event.type == pygame.KEYDOWN:
-            if not game.start and event.key == pygame.K_SPACE:
-                game.starting()
+            if not game.start:
+                if event.key == pygame.K_SPACE:
+                    game.starting()
+                if event.key == pygame.K_i:
+                    game.info = True
             if game.over:
                 if event.key == pygame.K_SPACE:
                     game.playAgain()

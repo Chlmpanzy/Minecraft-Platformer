@@ -204,7 +204,10 @@ class Game():
         self.day = (106,206,255)
         self.night = (0,0,102)
         self.startMiddle = True
+        self.winImage = pygame.transform.scale(pygame.image.load("MarioSleep.png"), (200,200))
+        self.loseImage = pygame.transform.scale(pygame.image.load("MarioSad.png"), (200,200))
 
+        self.info = False
         self.start = False
         self.WIDTH = 600
         self.HEIGHT = 900
@@ -218,6 +221,7 @@ class Game():
         self.lives = 10
         self.nightsTook = 0
         self.level = 1
+        
         
         self.surface = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
@@ -321,7 +325,6 @@ class Game():
         self.currentLevel = self.levels[self.level]
         self.player = Player(self.currentLevel.playerSpawn[0], self.currentLevel.playerSpawn[1])
         self.bed = Bed(self.currentLevel.bedSpawn[0], self.currentLevel.bedSpawn[1])
-
     def starting(self):
         '''
         This function starts counters, so that they arent going before they actully start the game
@@ -365,31 +368,37 @@ class Game():
     def introScreen(self):
         '''
         This function draws the intro screen
-        (self) -> None
+        () -> None
         '''
         text = self.fonts["Title"].render("Press SPACE to Continue",1,self.RED)
         title = self.fonts["Title"].render("Mario Slumber Party: ", 1, self.WHITE)
         subtitle = self.fonts["Medium"].render("Help Mario get some well deserved rest!", 1, self.WHITE)
+        info = self.fonts["Medium"].render("Press i for the Games Instructions", 1, self.WHITE)
         self.surface.blit(self.introBg, (0,0))
         self.surface.blit(text, (45, 700))
         self.surface.blit(title, (80, 550))
         self.surface.blit(subtitle, (90,620))
+        self.surface.blit(info, (110, 650))
 
     def gameOver(self):
         '''
         Draws the Game Over screen
+        () -> None
         '''
         self.over = True
         self.surface.fill((0,0,0))
         if self.won:
             text = self.fonts["Title"].render("YOU WON!!", 1, self.RED)
+            image = self.winImage
         else:
+            image = self.loseImage
             text = self.fonts["Title"].render("YOU LOST!", 1, self.RED)
         
         marioSleepy = self.fonts["Medium"].render("Nights Missed: " + str(self.nightsTook), 1, self.WHITE)
         text1 = self.fonts["Title"].render("Press SPACE to Play Again",1,self.WHITE)
         text2 = self.fonts["Medium"].render("Press ESC to leave", 1, self.WHITE)
 
+        self.surface.blit(image, (self.WIDTH//2-100, 100))
         self.surface.blit(marioSleepy, (self.WIDTH//2-75, self.HEIGHT//2-15))
         self.surface.blit(text, (self.WIDTH//2-100, self.HEIGHT//2-125))
         self.drawLives(self.HEIGHT//2-75)
@@ -400,7 +409,8 @@ class Game():
 
     def drawBg(self):
         '''
-        Draws the day cycle as well as the movign sun and moon
+        Draws the day cycle as well as the moving sun and moon
+        () -> None
         '''
         starSpeed = ((self.WIDTH+2*30)/self.dayCycle) * 2 #Make sure stars move at a speed that will get them across the screen in 1 cycle
 
@@ -437,35 +447,72 @@ class Game():
                 moonX = self.WIDTH + 30
                 self.newCycle = pygame.time.get_ticks()/1000
 
-    def drawLives(self, y):
+    def drawLives(self, y: int):
         '''
         Draw Marios lives left
+        (int) -> None
         '''
         offset = 0
         for i in range(self.lives):
             self.surface.blit(self.livesImage, (self.WIDTH//2-(self.lives*32//2) + offset, y))
             offset += 35 #spacing between each life
 
+    def infoScreen(self):
+        '''
+        Draws the info screen
+        () -> None
+        '''
+        self.surface.fill((0,0,0))
+        text1 = self.fonts["Medium"].render("Help Mario go to sleep by getting to the bed each level",1,self.WHITE)
+        text2 = self.fonts["Medium"].render("You'll need to traverse through a variety of plataforms", 1, self.WHITE)
+        Grass(100,700,2).draw(self.surface)
+        grassText = self.fonts["Small"].render("1. Grass block, safe to land and jump from", 1, self.WHITE)
+        Bounce(200, 700, 2).draw(self.surface)
+        bounceText = self.fonts["Small"].render("2. Bounce block, will propel you up when landed on, regardless of", 1, self.WHITE)
+        bounceText2 = self.fonts["Small"].render("wether or not you jump", 1, self.WHITE)
+        Dive(300, 700, 2).draw(self.surface)
+        diveText = self.fonts["Small"].render("3. Dive block, will propel you down when landed on, notice how the", 1, self.WHITE)
+        diveText2 = self.fonts["Small"].render("dots on the dive differ from the bounce to tell them apart", 1, self.WHITE)
+        Lava(400, 700, 2).draw(self.surface)
+        lavaText = self.fonts["Small"].render("4. Lava block, not safe to land on, you'll reset the level and lose a life", 1, self.WHITE)
+        self.drawLives(190)
+        lives = self.fonts["Small"].render("You start with 10 lives, once all lives are lost you'll have to restart the game", 1, self.WHITE)
+
+        self.surface.blit(text1, (30, 100))
+        self.surface.blit(text2, (30, 150))
+        self.surface.blit(lives, (20, 250))
+        self.surface.blit(grassText, (30, 400))
+        self.surface.blit(bounceText, (30, 450))
+        self.surface.blit(bounceText2, (30, 470))
+        self.surface.blit(diveText, (30, 520))
+        self.surface.blit(diveText2, (30, 540))
+        self.surface.blit(lavaText, (30, 590))
+        
+
     def drawAll(self):
         '''
         Uses all of the Game draw function and draws the entire game
+        () -> None
         '''
         if not self.start:
-            self.introScreen()
+            if self.info:
+                self.infoScreen()
+            else:
+                self.introScreen()
         else:
             self.drawBg()
             self.drawLives(5)
             self.player.draw(self.surface)
             self.bed.draw(self.surface)
-            for platform in self.currentLevel.platformsDraw:
-                if platform != None:
-                    for block in platform:
-                        block.draw(self.surface) 
+            for platforms in self.currentLevel.platformsDraw:
+                if platforms != None:
+                    for platform in platforms:
+                        platform.draw(self.surface) 
 
     def unSinkPlayer(self):
         '''
         This functions ensures player dont sink into platforms when gravity get really fast
-        (self) -> None
+        () -> None
         '''
         while self.player.collide(self.currentLevel.platforms["grass"]):
             self.player.y -= 1
@@ -474,7 +521,7 @@ class Game():
     def sinkPlayer(self):
         '''
         This functions ensures player cant jump through platforms, by sinking them if there heads collide with one
-        (self) -> None
+        () -> None
         '''
         while self.player.collide(self.currentLevel.platforms["grass"]):
             self.player.y += 1
@@ -526,6 +573,7 @@ class Game():
         else:
             self.won = True
             self.gameOver()
+    
         
 
 
